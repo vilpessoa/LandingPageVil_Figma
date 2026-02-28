@@ -310,20 +310,25 @@ const DataContext = createContext<DataContextType | null>(null);
 
 const STORAGE_KEY = "vil_portfolio_data";
 
+const API_ENDPOINT = "/api/site-data";
+
+function mergeWithDefaults(input: Partial<SiteData> | null | undefined): SiteData {
+  const parsed = input ?? {};
+  return {
+    ...DEFAULT_DATA,
+    ...parsed,
+    personal: { ...DEFAULT_DATA.personal, ...parsed.personal },
+    about: { ...DEFAULT_DATA.about, ...parsed.about },
+    philosophy: { ...DEFAULT_DATA.philosophy, ...parsed.philosophy },
+    admin: { ...DEFAULT_DATA.admin, ...parsed.admin },
+  };
+}
+
 function loadData(): SiteData {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
-      const parsed = JSON.parse(raw);
-      // Merge with defaults to handle new fields
-      return {
-        ...DEFAULT_DATA,
-        ...parsed,
-        personal: { ...DEFAULT_DATA.personal, ...parsed.personal },
-        about: { ...DEFAULT_DATA.about, ...parsed.about },
-        philosophy: { ...DEFAULT_DATA.philosophy, ...parsed.philosophy },
-        admin: { ...DEFAULT_DATA.admin, ...parsed.admin },
-      };
+      return mergeWithDefaults(JSON.parse(raw));
     }
   } catch {}
   return DEFAULT_DATA;
@@ -338,24 +343,63 @@ function saveData(data: SiteData) {
 export function DataProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<SiteData>(loadData);
 
-  const update = (next: SiteData) => {
-    setData(next);
-    saveData(next);
+  useEffect(() => {
+    let active = true;
+
+    const loadRemote = async () => {
+      try {
+        const response = await fetch(API_ENDPOINT);
+        if (!response.ok) return;
+        const remote = await response.json();
+        if (!active) return;
+        const merged = mergeWithDefaults(remote);
+        setData(merged);
+        saveData(merged);
+      } catch {
+        // Optional endpoint: keep local cache when API is unavailable.
+      }
+    };
+
+    void loadRemote();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const persistRemote = async (next: SiteData) => {
+    try {
+      await fetch(API_ENDPOINT, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(next),
+      });
+    } catch {
+      // Local cache still preserves admin updates in this browser.
+    }
+  };
+
+  const update = (computeNext: (prev: SiteData) => SiteData) => {
+    setData((prev) => {
+      const next = computeNext(prev);
+      saveData(next);
+      void persistRemote(next);
+      return next;
+    });
   };
 
   return (
     <DataContext.Provider
       value={{
         data,
-        updatePersonal: (val) => update({ ...data, personal: val }),
-        updateMetrics: (val) => update({ ...data, metrics: val }),
-        updateAbout: (val) => update({ ...data, about: val }),
-        updateTechStack: (val) => update({ ...data, techStack: val }),
-        updateExtraTechs: (val) => update({ ...data, extraTechs: val }),
-        updateProjects: (val) => update({ ...data, projects: val }),
-        updatePhilosophy: (val) => update({ ...data, philosophy: val }),
-        updateAdmin: (val) => update({ ...data, admin: val }),
-        resetToDefaults: () => update(DEFAULT_DATA),
+        updatePersonal: (val) => update((prev) => ({ ...prev, personal: val })),
+        updateMetrics: (val) => update((prev) => ({ ...prev, metrics: val })),
+        updateAbout: (val) => update((prev) => ({ ...prev, about: val })),
+        updateTechStack: (val) => update((prev) => ({ ...prev, techStack: val })),
+        updateExtraTechs: (val) => update((prev) => ({ ...prev, extraTechs: val })),
+        updateProjects: (val) => update((prev) => ({ ...prev, projects: val })),
+        updatePhilosophy: (val) => update((prev) => ({ ...prev, philosophy: val })),
+        updateAdmin: (val) => update((prev) => ({ ...prev, admin: val })),
+        resetToDefaults: () => update(() => DEFAULT_DATA),
       }}
     >
       {children}
