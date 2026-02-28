@@ -1,12 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { Download, Linkedin, Menu, X } from "lucide-react";
-import { useSiteData } from "../context/DataContext";
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const { data } = useSiteData();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -22,8 +20,7 @@ export function Navbar() {
     { label: "Contato", href: "#contact" },
   ];
 
-  const firstLetter = data.personal.firstName.charAt(0);
-  const restName = data.personal.firstName.slice(1);
+  const logoName = "Vil";
 
   return (
     <nav
@@ -76,8 +73,8 @@ export function Navbar() {
             e.currentTarget.style.boxShadow = "none";
           }}
         >
-          <span style={{ color: "#00C2FF" }}>{firstLetter}</span>
-          {restName}
+          <span style={{ color: "#00C2FF" }}>{logoName.charAt(0)}</span>
+          {logoName.slice(1)}
           <span style={{ color: "#00C2FF" }}>.</span>
         </button>
 
