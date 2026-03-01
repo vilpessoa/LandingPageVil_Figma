@@ -1,5 +1,7 @@
 import { Download, Linkedin, ChevronDown } from "lucide-react";
+import { useState } from "react";
 import { useSiteData } from "../context/DataContext";
+import { generateLandingPagePDF } from "../utils/pdfGenerator";
 
 function AnimatedGridLines() {
   return (
@@ -64,6 +66,18 @@ export function HeroSection() {
   const { personal } = data;
   const firstLetter = personal.firstName.charAt(0);
   const restFirst = personal.firstName.slice(1);
+  const [loading, setLoading] = useState(false);
+
+  const handleDownloadPDF = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (loading) return;
+    setLoading(true);
+    try {
+      await generateLandingPagePDF();
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <section id="hero" style={{ position: "relative", minHeight: "100vh", background: "linear-gradient(135deg, #0F172A 0%, #111827 50%, #0F172A 100%)", display: "flex", alignItems: "center", overflow: "hidden" }}>
@@ -107,15 +121,25 @@ export function HeroSection() {
 
         {/* CTAs */}
         <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
-          <a
-            href={personal.cvUrl || "#"}
-            style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "14px 28px", borderRadius: "8px", background: "#00C2FF", color: "#0F172A", fontFamily: "'Inter', sans-serif", fontSize: "14px", fontWeight: 700, textDecoration: "none", transition: "all 0.25s ease" }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "#33CEFF"; e.currentTarget.style.boxShadow = "0 0 30px rgba(0,194,255,0.5)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "#00C2FF"; e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0)"; }}
+          <button
+            onClick={handleDownloadPDF}
+            disabled={loading}
+            style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "14px 28px", borderRadius: "8px", background: loading ? "#0099CC" : "#00C2FF", color: "#0F172A", fontFamily: "'Inter', sans-serif", fontSize: "14px", fontWeight: 700, border: "none", cursor: loading ? "not-allowed" : "pointer", transition: "all 0.25s ease", opacity: loading ? 0.85 : 1 }}
+            onMouseEnter={(e) => { if (!loading) { e.currentTarget.style.background = "#33CEFF"; e.currentTarget.style.boxShadow = "0 0 30px rgba(0,194,255,0.5)"; e.currentTarget.style.transform = "translateY(-2px)"; } }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = loading ? "#0099CC" : "#00C2FF"; e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0)"; }}
           >
-            <Download size={16} />
-            Download CV
-          </a>
+            {loading ? (
+              <>
+                <span style={{ width: 16, height: 16, border: "2px solid rgba(15,23,42,0.3)", borderTopColor: "#0F172A", borderRadius: "50%", display: "inline-block", animation: "spin-btn 0.7s linear infinite" }} />
+                Gerando…
+              </>
+            ) : (
+              <>
+                <Download size={16} />
+                Download
+              </>
+            )}
+          </button>
           <a
             href={personal.linkedinUrl}
             target="_blank"
@@ -138,6 +162,7 @@ export function HeroSection() {
       <style>{`
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
         @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
+        @keyframes spin-btn { to { transform: rotate(360deg); } }
       `}</style>
     </section>
   );

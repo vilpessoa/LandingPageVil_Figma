@@ -1,12 +1,25 @@
 import { useEffect, useRef, useState } from "react";
 import { Linkedin, Mail, MapPin, ArrowUpRight, Download } from "lucide-react";
 import { useSiteData } from "../context/DataContext";
+import { generateLandingPagePDF } from "../utils/pdfGenerator";
 
 export function ContactSection() {
   const { data } = useSiteData();
   const { personal } = data;
   const [visible, setVisible] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  const handleDownloadPDF = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (pdfLoading) return;
+    setPdfLoading(true);
+    try {
+      await generateLandingPagePDF();
+    } finally {
+      setPdfLoading(false);
+    }
+  };
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -67,14 +80,24 @@ export function ContactSection() {
           >
             <Linkedin size={18} /> Conectar no LinkedIn <ArrowUpRight size={16} />
           </a>
-          <a
-            href={personal.cvUrl || "#"}
-            style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "16px 36px", borderRadius: "8px", background: "transparent", color: "#F9FAFB", fontFamily: "'Inter', sans-serif", fontSize: "15px", fontWeight: 600, textDecoration: "none", border: "1px solid rgba(255,255,255,0.12)", transition: "all 0.25s ease" }}
-            onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(0,194,255,0.3)"; e.currentTarget.style.color = "#00C2FF"; e.currentTarget.style.transform = "translateY(-2px)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"; e.currentTarget.style.color = "#F9FAFB"; e.currentTarget.style.transform = "translateY(0)"; }}
+          <button
+            onClick={handleDownloadPDF}
+            disabled={pdfLoading}
+            style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "16px 36px", borderRadius: "8px", background: "transparent", color: pdfLoading ? "#00C2FF" : "#F9FAFB", fontFamily: "'Inter', sans-serif", fontSize: "15px", fontWeight: 600, border: `1px solid ${pdfLoading ? "rgba(0,194,255,0.3)" : "rgba(255,255,255,0.12)"}`, cursor: pdfLoading ? "not-allowed" : "pointer", transition: "all 0.25s ease", opacity: pdfLoading ? 0.8 : 1 }}
+            onMouseEnter={(e) => { if (!pdfLoading) { e.currentTarget.style.borderColor = "rgba(0,194,255,0.3)"; e.currentTarget.style.color = "#00C2FF"; e.currentTarget.style.transform = "translateY(-2px)"; } }}
+            onMouseLeave={(e) => { if (!pdfLoading) { e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"; e.currentTarget.style.color = "#F9FAFB"; e.currentTarget.style.transform = "translateY(0)"; } }}
           >
-            <Download size={18} /> Download CV
-          </a>
+            {pdfLoading ? (
+              <>
+                <span style={{ width: 18, height: 18, border: "2px solid rgba(0,194,255,0.2)", borderTopColor: "#00C2FF", borderRadius: "50%", display: "inline-block", animation: "spin-contact 0.7s linear infinite" }} />
+                Gerando…
+              </>
+            ) : (
+              <>
+                <Download size={18} /> Download
+              </>
+            )}
+          </button>
         </div>
       </div>
 
@@ -84,6 +107,9 @@ export function ContactSection() {
         </p>
         <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", color: "#4B5563" }}>Transformando dados em decisões estratégicas.</p>
       </div>
+      <style>{`
+        @keyframes spin-contact { to { transform: rotate(360deg); } }
+      `}</style>
     </section>
   );
 }

@@ -10,6 +10,7 @@ import { ContactSection } from "../components/ContactSection";
 export function LandingPage() {
   return (
     <div
+      id="landing-page-root"
       style={{
         background: "#0F172A",
         minHeight: "100vh",

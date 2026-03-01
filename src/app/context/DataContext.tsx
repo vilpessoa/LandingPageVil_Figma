@@ -310,8 +310,6 @@ const DataContext = createContext<DataContextType | null>(null);
 
 const STORAGE_KEY = "vil_portfolio_data";
 
-const API_ENDPOINT = "/api/site-data";
-
 function mergeWithDefaults(input: Partial<SiteData> | null | undefined): SiteData {
   const parsed = input ?? {};
   return {
@@ -328,61 +326,35 @@ function loadData(): SiteData {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
-      return mergeWithDefaults(JSON.parse(raw));
+      const parsed = JSON.parse(raw);
+      return mergeWithDefaults(parsed);
     }
-  } catch {}
+  } catch (err) {
+    console.error("Erro ao carregar dados do localStorage:", err);
+  }
   return DEFAULT_DATA;
 }
 
 function saveData(data: SiteData) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch {}
+    console.log("Dados salvos no localStorage com sucesso!");
+  } catch (err) {
+    console.error("Erro ao salvar dados no localStorage:", err);
+  }
 }
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<SiteData>(loadData);
 
+  // Salvar sempre que o estado mudar
   useEffect(() => {
-    let active = true;
-
-    const loadRemote = async () => {
-      try {
-        const response = await fetch(API_ENDPOINT);
-        if (!response.ok) return;
-        const remote = await response.json();
-        if (!active) return;
-        const merged = mergeWithDefaults(remote);
-        setData(merged);
-        saveData(merged);
-      } catch {
-        // Optional endpoint: keep local cache when API is unavailable.
-      }
-    };
-
-    void loadRemote();
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const persistRemote = async (next: SiteData) => {
-    try {
-      await fetch(API_ENDPOINT, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(next),
-      });
-    } catch {
-      // Local cache still preserves admin updates in this browser.
-    }
-  };
+    saveData(data);
+  }, [data]);
 
   const update = (computeNext: (prev: SiteData) => SiteData) => {
     setData((prev) => {
       const next = computeNext(prev);
-      saveData(next);
-      void persistRemote(next);
       return next;
     });
   };
